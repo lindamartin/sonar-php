@@ -23,6 +23,7 @@ import com.google.common.annotations.Beta;
 import com.google.common.collect.ImmutableList;
 import org.sonar.php.tree.symbols.Scope;
 
+import java.util.List;
 import java.util.Set;
 
 @Beta
@@ -37,14 +38,14 @@ public interface SymbolTable {
    * @param kind kind of symbols to look for
    * @return list of symbols with the given kind
    */
-  Set<Symbol> getSymbols(Symbol.Kind kind);
+  List<Symbol> getSymbols(Symbol.Kind kind);
 
   /**
    *
    * @param name name of symbols to look for
    * @return list of symbols with the given name
    */
-  Set<Symbol> getSymbols(String name);
+  List<Symbol> getSymbols(String name);
 
   Set<Scope> getScopes();
 }

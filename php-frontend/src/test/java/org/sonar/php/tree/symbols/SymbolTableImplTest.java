@@ -27,20 +27,41 @@ import static org.fest.assertions.Assertions.assertThat;
 
 public class SymbolTableImplTest extends ParsingTestUtils {
 
-  private final SymbolTableImpl SYMBOL_MODEL = SymbolTableImpl.create(parse("symbols/symbolTable.php"));
+  private SymbolTableImpl SYMBOL_MODEL = SymbolTableImpl.create(parse("symbols/symbolTable.php"));
 
   @Test
   public void symbols_filtering() {
-    assertThat(SYMBOL_MODEL.getSymbols()).hasSize(12);
+    assertThat(SYMBOL_MODEL.getSymbols()).hasSize(16);
 
     assertThat(SYMBOL_MODEL.getSymbols(Symbol.Kind.FUNCTION)).hasSize(2);
     assertThat(SYMBOL_MODEL.getSymbols(Symbol.Kind.CLASS)).hasSize(1);
+    assertThat(SYMBOL_MODEL.getSymbols(Symbol.Kind.FIELD)).hasSize(3);
     assertThat(SYMBOL_MODEL.getSymbols(Symbol.Kind.PARAMETER)).hasSize(1);
-    assertThat(SYMBOL_MODEL.getSymbols(Symbol.Kind.VARIABLE)).hasSize(8);
+    assertThat(SYMBOL_MODEL.getSymbols(Symbol.Kind.VARIABLE)).hasSize(9);
 
     assertThat(SYMBOL_MODEL.getSymbols("$a")).hasSize(2);
     // Case insensitive
     assertThat(SYMBOL_MODEL.getSymbols("$A")).hasSize(2);
+  }
+
+  @Test
+  public void test_class_fields() throws Exception {
+    Symbol field = SYMBOL_MODEL.getSymbols("$field1").get(0);
+    Symbol constantField = SYMBOL_MODEL.getSymbols("CONSTANT_FIELD").get(0);
+
+    assertThat(field.hasModifier("public")).isTrue();
+    assertThat(field.is(Symbol.Kind.FIELD)).isTrue();
+
+    assertThat(constantField.hasModifier("const")).isTrue();
+    assertThat(constantField.is(Symbol.Kind.FIELD)).isTrue();
+  }
+
+  @Test
+  public void test_global_constant() throws Exception {
+    Symbol constant = SYMBOL_MODEL.getSymbols("CONSTANT").get(0);
+
+    assertThat(constant.hasModifier("const")).isTrue();
+    assertThat(constant.is(Symbol.Kind.VARIABLE)).isTrue();
   }
 
   @Test

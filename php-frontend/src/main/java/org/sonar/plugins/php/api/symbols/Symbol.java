@@ -20,9 +20,11 @@
 package org.sonar.plugins.php.api.symbols;
 
 import com.google.common.annotations.Beta;
+import com.google.common.collect.ImmutableList;
 import org.sonar.php.tree.symbols.Scope;
 import org.sonar.plugins.php.api.tree.expression.IdentifierTree;
 import org.sonar.plugins.php.api.tree.expression.VariableIdentifierTree;
+import org.sonar.plugins.php.api.tree.lexical.SyntaxToken;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -34,7 +36,8 @@ public class Symbol {
     VARIABLE("variable"),
     FUNCTION("function"),
     PARAMETER("parameter"),
-    CLASS("class");
+    CLASS("class"),
+    FIELD("field");
 
     Kind(String value) {
       this.value = value;
@@ -51,12 +54,30 @@ public class Symbol {
   private Kind kind;
   private Scope scope;
   private List<VariableIdentifierTree> usages = new LinkedList<>();
+  private List<SyntaxToken> modifiers = new LinkedList<>();
 
   public Symbol(IdentifierTree declaration, Kind kind, Scope scope) {
     this.declaration = declaration;
     this.name = declaration.text();
     this.kind = kind;
     this.scope = scope;
+  }
+
+  public ImmutableList<SyntaxToken> modifiers() {
+    return ImmutableList.copyOf(modifiers);
+  }
+
+  public boolean hasModifier(String modifier) {
+    for (SyntaxToken syntaxToken : modifiers) {
+      if (syntaxToken.text().equalsIgnoreCase(modifier)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public void addModifiers(List<SyntaxToken> modifiers) {
+    this.modifiers.addAll(modifiers);
   }
 
   public void addUsage(VariableIdentifierTree usage){

@@ -20,13 +20,17 @@
 package org.sonar.php.tree.symbols;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import org.sonar.plugins.php.api.symbols.Symbol;
 import org.sonar.plugins.php.api.tree.CompilationUnitTree;
 import org.sonar.plugins.php.api.tree.Tree;
 import org.sonar.plugins.php.api.tree.declaration.ClassDeclarationTree;
+import org.sonar.plugins.php.api.tree.declaration.ClassPropertyDeclarationTree;
+import org.sonar.plugins.php.api.tree.declaration.ConstantDeclarationTree;
 import org.sonar.plugins.php.api.tree.declaration.FunctionDeclarationTree;
 import org.sonar.plugins.php.api.tree.declaration.MethodDeclarationTree;
 import org.sonar.plugins.php.api.tree.declaration.ParameterTree;
+import org.sonar.plugins.php.api.tree.declaration.VariableDeclarationTree;
 import org.sonar.plugins.php.api.tree.expression.FunctionExpressionTree;
 import org.sonar.plugins.php.api.tree.expression.IdentifierTree;
 import org.sonar.plugins.php.api.tree.expression.LexicalVariablesTree;
@@ -88,6 +92,20 @@ public class SymbolVisitor extends PHPVisitorCheck {
   }
 
   @Override
+  public void visitClassPropertyDeclaration(ClassPropertyDeclarationTree tree) {
+    for (VariableDeclarationTree field : tree.declarations()) {
+      createSymbol(field.identifier(), Symbol.Kind.FIELD).addModifiers(tree.modifierTokens());
+    }
+  }
+
+  @Override
+  public void visitConstDeclaration(ConstantDeclarationTree tree) {
+    for (VariableDeclarationTree constant : tree.declarations()) {
+      createSymbol(constant.identifier(), Symbol.Kind.VARIABLE).addModifiers(Lists.newArrayList(tree.constToken()));
+    }
+  }
+
+  @Override
   public void visitVariableIdentifier(VariableIdentifierTree tree) {
     createSymbol(tree.variableExpression(), Symbol.Kind.VARIABLE);
   }
@@ -113,7 +131,7 @@ public class SymbolVisitor extends PHPVisitorCheck {
 
       IdentifierTree identifier = null;
       if (variable.is(Tree.Kind.VARIABLE_IDENTIFIER)) {
-        identifier = ((VariableIdentifierTree) variable).variableExpression();
+        identifier = (IdentifierTree) variable.variableExpression();
 
       } else if (variable.is(Tree.Kind.REFERENCE_VARIABLE) && variable.variableExpression().is(Tree.Kind.VARIABLE_IDENTIFIER)) {
         identifier = ((VariableIdentifierTree) variable.variableExpression()).variableExpression();
@@ -145,15 +163,16 @@ public class SymbolVisitor extends PHPVisitorCheck {
     symbolTable.addScope(currentScope);
   }
 
-  private void createSymbol(IdentifierTree identifier, Symbol.Kind kind) {
+  private Symbol createSymbol(IdentifierTree identifier, Symbol.Kind kind) {
     Symbol symbol = currentScope.getSymbol(identifier.text(), kind);
 
     if (symbol == null) {
-      symbolTable.declareSymbol(identifier, kind, currentScope);
+      symbol = symbolTable.declareSymbol(identifier, kind, currentScope);
 
     } else {
       // fixme: handle usages
     }
+    return symbol;
   }
 
 }

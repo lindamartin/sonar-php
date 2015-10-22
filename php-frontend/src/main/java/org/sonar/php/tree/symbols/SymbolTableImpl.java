@@ -28,7 +28,6 @@ import org.sonar.plugins.php.api.tree.CompilationUnitTree;
 import org.sonar.plugins.php.api.tree.expression.IdentifierTree;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -73,8 +72,8 @@ public class SymbolTableImpl implements SymbolTable {
    * @return list of symbols with the given kind
    */
   @Override
-  public Set<Symbol> getSymbols(Symbol.Kind kind) {
-    Set<Symbol> result = new HashSet<>();
+  public List<Symbol> getSymbols(Symbol.Kind kind) {
+    List<Symbol> result = new ArrayList<>();
     for (Symbol symbol : getSymbols()){
       if (kind.equals(symbol.kind())){
         result.add(symbol);
@@ -89,8 +88,8 @@ public class SymbolTableImpl implements SymbolTable {
    * @return list of symbols with the given name
    */
   @Override
-  public Set<Symbol> getSymbols(String name) {
-    Set<Symbol> result = new HashSet<>();
+  public List<Symbol> getSymbols(String name) {
+    List<Symbol> result = new ArrayList<>();
     for (Symbol symbol : getSymbols()){
       if (name.equalsIgnoreCase(symbol.name())){
         result.add(symbol);
