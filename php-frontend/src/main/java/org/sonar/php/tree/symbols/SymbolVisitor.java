@@ -32,6 +32,7 @@ import org.sonar.plugins.php.api.tree.declaration.MethodDeclarationTree;
 import org.sonar.plugins.php.api.tree.declaration.NamespaceNameTree;
 import org.sonar.plugins.php.api.tree.declaration.ParameterTree;
 import org.sonar.plugins.php.api.tree.declaration.VariableDeclarationTree;
+import org.sonar.plugins.php.api.tree.expression.CompoundVariableTree;
 import org.sonar.plugins.php.api.tree.expression.FunctionCallTree;
 import org.sonar.plugins.php.api.tree.expression.FunctionExpressionTree;
 import org.sonar.plugins.php.api.tree.expression.IdentifierTree;
@@ -108,8 +109,17 @@ public class SymbolVisitor extends PHPVisitorCheck {
 
   @Override
   public void visitVariableIdentifier(VariableIdentifierTree tree) {
-    System.out.println(tree.token().text() + " - " + tree.token().line());
     createVariableIdentifierSymbol(tree);
+  }
+
+  @Override
+  public void visitCompoundVariable(CompoundVariableTree tree) {
+    if (tree.variableExpression().is(Tree.Kind.NAME_IDENTIFIER)) {
+      // fixme use this variable if in symbol table (search with the "$")
+    } else if (tree.variableExpression().is(Tree.Kind.NAMESPACE_NAME)) {
+      // fixme use this variable if in symbol table (search with the "$")
+    }
+    super.visitCompoundVariable(tree);
   }
 
   @Override
