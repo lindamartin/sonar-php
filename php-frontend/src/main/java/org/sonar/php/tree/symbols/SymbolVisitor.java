@@ -29,17 +29,18 @@ import org.sonar.plugins.php.api.tree.declaration.ClassPropertyDeclarationTree;
 import org.sonar.plugins.php.api.tree.declaration.ConstantDeclarationTree;
 import org.sonar.plugins.php.api.tree.declaration.FunctionDeclarationTree;
 import org.sonar.plugins.php.api.tree.declaration.MethodDeclarationTree;
+import org.sonar.plugins.php.api.tree.declaration.NamespaceNameTree;
 import org.sonar.plugins.php.api.tree.declaration.ParameterTree;
 import org.sonar.plugins.php.api.tree.declaration.VariableDeclarationTree;
+import org.sonar.plugins.php.api.tree.expression.FunctionCallTree;
 import org.sonar.plugins.php.api.tree.expression.FunctionExpressionTree;
 import org.sonar.plugins.php.api.tree.expression.IdentifierTree;
 import org.sonar.plugins.php.api.tree.expression.LexicalVariablesTree;
+import org.sonar.plugins.php.api.tree.expression.NameIdentifierTree;
 import org.sonar.plugins.php.api.tree.expression.VariableIdentifierTree;
 import org.sonar.plugins.php.api.tree.expression.VariableTree;
 import org.sonar.plugins.php.api.tree.statement.GlobalStatementTree;
 import org.sonar.plugins.php.api.visitors.PHPVisitorCheck;
-
-import java.util.List;
 
 public class SymbolVisitor extends PHPVisitorCheck {
 
@@ -107,40 +108,23 @@ public class SymbolVisitor extends PHPVisitorCheck {
 
   @Override
   public void visitVariableIdentifier(VariableIdentifierTree tree) {
-    createSymbol(tree.variableExpression(), Symbol.Kind.VARIABLE);
+    System.out.println(tree.token().text() + " - " + tree.token().line());
+    createVariableIdentifierSymbol(tree);
   }
 
   @Override
   public void visitParameter(ParameterTree tree) {
-    createSymbol(tree.variableIdentifier().variableExpression(), Symbol.Kind.PARAMETER);
+    createSymbol(tree.variableIdentifier(), Symbol.Kind.PARAMETER);
     // do not scan the children to not pass through variableIdentifier
   }
 
   @Override
   public void visitGlobalStatement(GlobalStatementTree tree) {
-    useSymbolsFromOuterScope(tree.variables(), globalScope);
-  }
-
-  @Override
-  public void visitLexicalVariables(LexicalVariablesTree tree) {
-    useSymbolsFromOuterScope(tree.variables(), currentScope.outer());
-  }
-
-  private void useSymbolsFromOuterScope(List<VariableTree> variables, Scope outerScope) {
-    for (VariableTree variable : variables) {
-
-      IdentifierTree identifier = null;
+    for (VariableTree variable : tree.variables()) {
+      // Other cases are not supported
       if (variable.is(Tree.Kind.VARIABLE_IDENTIFIER)) {
-        identifier = (IdentifierTree) variable.variableExpression();
-
-      } else if (variable.is(Tree.Kind.REFERENCE_VARIABLE) && variable.variableExpression().is(Tree.Kind.VARIABLE_IDENTIFIER)) {
-        identifier = ((VariableIdentifierTree) variable.variableExpression()).variableExpression();
-      }
-      // Other cases are not supported, e.g: variable variables $$a
-
-      if (identifier != null) {
-        Symbol symbol = outerScope.getSymbol(identifier.text(), Symbol.Kind.VARIABLE);
-
+        IdentifierTree identifier = (IdentifierTree) variable.variableExpression();
+        Symbol symbol = globalScope.getSymbol(identifier.text(), Symbol.Kind.VARIABLE);
         if (symbol != null) {
           currentScope.addSymbol(symbol);
         } else {
@@ -148,9 +132,51 @@ public class SymbolVisitor extends PHPVisitorCheck {
         }
 
       }
+    }
+  }
 
+  @Override
+  public void visitLexicalVariables(LexicalVariablesTree tree) {
+    for (VariableTree variable : tree.variables()) {
+      // Other cases are not supported
+      IdentifierTree identifier;
+      if (variable.is(Tree.Kind.VARIABLE_IDENTIFIER)) {
+        // fixme add usage for parent symbol
+        identifier = (IdentifierTree) variable.variableExpression();
+        createSymbol(identifier, Symbol.Kind.VARIABLE);
+
+      } else if (variable.is(Tree.Kind.REFERENCE_VARIABLE) && variable.variableExpression().is(Tree.Kind.VARIABLE_IDENTIFIER)) {
+        identifier = ((VariableIdentifierTree) variable.variableExpression()).variableExpression();
+        Symbol symbol = currentScope.outer().getSymbol(identifier.text(), Symbol.Kind.VARIABLE);
+        if (symbol != null) {
+          currentScope.addSymbol(symbol);
+        } else {
+          createSymbol(identifier, Symbol.Kind.VARIABLE);
+        }
+
+      }
+    }
+  }
+
+  @Override
+  public void visitFunctionCall(FunctionCallTree tree) {
+    if (tree.callee().is(Tree.Kind.NAMESPACE_NAME)) {
+      NamespaceNameTree namespaceNameCallee = (NamespaceNameTree) tree.callee();
+      usageForNamespaceName(namespaceNameCallee, Symbol.Kind.FUNCTION);
     }
 
+    super.visitFunctionCall(tree);
+  }
+
+  private void usageForNamespaceName(NamespaceNameTree namespaceName, Symbol.Kind kind) {
+    if (namespaceName.name().is(Tree.Kind.NAME_IDENTIFIER) && namespaceName.namespaces().isEmpty()) {
+      NameIdentifierTree usageIdentifier = (NameIdentifierTree) namespaceName.name();
+      Symbol symbol = currentScope.getSymbol(usageIdentifier.text(), kind);
+      if (symbol != null) {
+        symbol.addUsage(usageIdentifier);
+      }
+
+    }
   }
 
   private void leaveScope() {
@@ -163,6 +189,22 @@ public class SymbolVisitor extends PHPVisitorCheck {
     symbolTable.addScope(currentScope);
   }
 
+  private Symbol createVariableIdentifierSymbol(IdentifierTree identifier) {
+    Symbol symbol = currentScope.getSymbol(identifier.text());
+
+    if (symbol == null) {
+      symbol = symbolTable.declareSymbol(identifier, Symbol.Kind.VARIABLE, currentScope);
+
+    } else {
+      symbol = currentScope.getSymbol(identifier.text());
+      if (symbol != null && !symbol.is(Symbol.Kind.FIELD)) {
+        symbol.addUsage(identifier);
+      }
+    }
+
+    return symbol;
+  }
+
   private Symbol createSymbol(IdentifierTree identifier, Symbol.Kind kind) {
     Symbol symbol = currentScope.getSymbol(identifier.text(), kind);
 
@@ -170,8 +212,12 @@ public class SymbolVisitor extends PHPVisitorCheck {
       symbol = symbolTable.declareSymbol(identifier, kind, currentScope);
 
     } else {
-      // fixme: handle usages
+      symbol = currentScope.getSymbol(identifier.text());
+      if (symbol != null && !symbol.is(Symbol.Kind.FIELD)) {
+        symbol.addUsage(identifier);
+      }
     }
+
     return symbol;
   }
 

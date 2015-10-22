@@ -90,12 +90,13 @@ public class ScopeTest extends ParsingTestUtils {
     Scope functionScope = getScopeFor(Kind.FUNCTION_EXPRESSION);
 
     assertThat(functionScope.getSymbol("$c")).isNotNull();
-    assertThat(SYMBOL_TABLE.getSymbols("$c")).hasSize(1);
+    assertThat(SYMBOL_TABLE.getSymbols("$c")).hasSize(2);
     assertThat(functionScope.getSymbol("$b")).isNotNull();
     assertThat(SYMBOL_TABLE.getSymbols("$b")).hasSize(1);
 
     Scope parentScope = getScopeFor(Kind.FUNCTION_DECLARATION);
-    assertThat(parentScope.getSymbol("$c")).isEqualTo(functionScope.getSymbol("$c"));
+    assertThat(parentScope.getSymbol("$c")).isNotEqualTo(functionScope.getSymbol("$c"));
+    assertThat(parentScope.getSymbol("$b")).isEqualTo(functionScope.getSymbol("$b"));
   }
 
   @Test

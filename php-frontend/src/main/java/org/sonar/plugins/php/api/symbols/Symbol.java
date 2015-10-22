@@ -23,7 +23,6 @@ import com.google.common.annotations.Beta;
 import com.google.common.collect.ImmutableList;
 import org.sonar.php.tree.symbols.Scope;
 import org.sonar.plugins.php.api.tree.expression.IdentifierTree;
-import org.sonar.plugins.php.api.tree.expression.VariableIdentifierTree;
 import org.sonar.plugins.php.api.tree.lexical.SyntaxToken;
 
 import java.util.LinkedList;
@@ -53,7 +52,7 @@ public class Symbol {
   private final IdentifierTree declaration;
   private Kind kind;
   private Scope scope;
-  private List<VariableIdentifierTree> usages = new LinkedList<>();
+  private List<IdentifierTree> usages = new LinkedList<>();
   private List<SyntaxToken> modifiers = new LinkedList<>();
 
   public Symbol(IdentifierTree declaration, Kind kind, Scope scope) {
@@ -80,11 +79,11 @@ public class Symbol {
     this.modifiers.addAll(modifiers);
   }
 
-  public void addUsage(VariableIdentifierTree usage){
+  public void addUsage(IdentifierTree usage){
     usages.add(usage);
   }
 
-  public List<VariableIdentifierTree> usages(){
+  public List<IdentifierTree> usages(){
     return usages;
   }
 
@@ -112,4 +111,12 @@ public class Symbol {
     return kind;
   }
 
+  @Override
+  public String toString() {
+    return "Symbol{" +
+      "name='" + name + '\'' +
+      ", kind=" + kind +
+      ", scope=" + scope +
+      '}';
+  }
 }
